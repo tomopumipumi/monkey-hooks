@@ -9,15 +9,18 @@ UIの状態管理、システムリソース（タイマーやGPS）の共有、
 
 Garmin向けアプリケーション「YAMAKAGE」は、MonkeyHooksの実用例の一つです。
 
-[YAMAKAGE(リポジトリ)](https://github.com/tomopumipumi/yamakage)
+[YAMAKAGE(リポジトリ)](https://github.com/tomopumipumi/yamakage)<br>
 [YAMAKAGE(Connect IQ)](https://apps.garmin.com/ja-JP/apps/48e48601-9506-4f67-b19c-59ca702c34b8?tid=2)
 
 
-<img width="428" height="598" alt="Image" src="https://github.com/user-attachments/assets/943b440a-47b6-43df-93b9-b234c8f552a5" />
+![HQaPT2Ka4AAXXRo.jpg](https://github.com/user-attachments/assets/8cda2c1b-71e9-45c9-a873-01fe399476ad)
 
-<img width="424" height="596" alt="Image" src="https://github.com/user-attachments/assets/1c735d86-54f9-492c-a708-14807308479b" />
+![HQaPT2ebIAEco02.jpg](https://github.com/user-attachments/assets/c363b3c0-c0e2-4ab2-af67-b42399e87cba)
 
-<img width="590" height="953" alt="Image" src="https://github.com/user-attachments/assets/3e805b72-a31f-4226-9086-5aae01d45a5b" />
+![HQaPT2Wa0AAZi5R.jpg](https://github.com/user-attachments/assets/3b663b69-eb33-4a11-a9c9-3e8a8cf78543)
+
+![HQaPT2KaEAEJMK0.jpg](https://github.com/user-attachments/assets/36c16aa4-fcb5-4ce4-abcc-b3acbbe83209)
+
 
 Garminデバイスの厳しいCPU・メモリ制約下において、太陽や月の軌道計算、パノラマビュー、アニメーションといった複雑なUIを実装する場合、通常は「パフォーマンスの確保」と「コードの保守性」の両立が大きな課題となります。
 
