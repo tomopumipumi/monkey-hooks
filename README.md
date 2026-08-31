@@ -121,6 +121,93 @@ base.sourcePath = source;lib/monkey-hooks/src
 
 ---
 
+## Recommended Architecture: Props Packing Pattern and Pure Render Functions
+
+To achieve both "smooth rendering performance" and "high testability" on Garmin devices, MonkeyHooks strongly recommends a UI design utilizing the "Props Packing Pattern."
+
+In Monkey C, accessing class instance variables (e.g., `_width` or `_progress`) internally triggers a hash lookup (dictionary lookup). Therefore, frequently accessing member variables inside `onUpdate`—which is called multiple times per second—is a major cause of frame rate drops.
+
+To prevent this, an effective architecture is to pack all the states held by the View into a single "array" and pass it to a stateless "pure function" for rendering.
+
+### Implementation Example
+
+#### **1. Defining Props Indices**
+
+To avoid magic numbers, define the array indices using an `enum` and leave comments indicating their types.
+
+```monkeyc
+module MainProps {
+    enum {
+        W = 0,        // Number
+        H,            // Number
+        IS_ANIM_ON,   // Boolean
+        PROGRESS,     // Float
+        DATA_SIZE = 4 // Number of elements in the array
+    }
+}
+
+```
+
+#### **2. Pure Render Module**
+
+Create a module that is solely responsible for rendering. At the beginning of the function, unpack the received array into local variables. **In Monkey C, accessing local variables is the fastest operation**, so this step alone drastically reduces the rendering overhead.
+
+```monkeyc
+module MainRender {
+    function render(dc as Graphics.Dc, props as Array) as Void {
+        // Unpack into local variables at the beginning
+        var w = props[MainProps.W] as Number;
+        var h = props[MainProps.H] as Number;
+        var isAnimOn = props[MainProps.IS_ANIM_ON] as Boolean;
+        var progress = props[MainProps.PROGRESS] as Float;
+
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
+        dc.clear();
+        
+        // From here on, use the local variables for rendering
+        // ...
+    }
+}
+
+```
+
+#### **3. View Container**
+
+The `View` class should focus exclusively on "monitoring/updating states" and "packing data." Eliminate all instance variables related to rendering and consolidate them into the `_props` array.
+
+```monkeyc
+class MainView extends WatchUi.View {
+    // Consolidate all cached data into a single array
+    private var _props as Array = new [MainProps.DATA_SIZE];
+
+    function onLayout(dc as Graphics.Dc) as Void {
+        _props[MainProps.W] = MonkeyHooks.useNumber(:width).req();
+        _props[MainProps.H] = MonkeyHooks.useNumber(:height).req();
+    }
+
+    function onTimerTick() as Void {
+        if (_props[MainProps.IS_ANIM_ON] as Boolean) {
+            _props[MainProps.PROGRESS] = (_props[MainProps.PROGRESS] as Float) + 0.1;
+            WatchUi.requestUpdate();
+        }
+    }
+
+    function onUpdate(dc as Graphics.Dc) as Void {
+        // The View simply delegates the state to the render function (no side effects)
+        MainRender.render(dc, _props);
+    }
+}
+
+```
+
+#### Benefits of this Pattern
+
+1. **Performance**: Completely eliminates member variable access (hash lookups) inside the `onUpdate` loop.
+2. **Separation of State and Rendering**: Aligns with React's design philosophy (Container / Presentational components), greatly improving the readability of View code that otherwise tends to be cluttered with dozens of variables.
+3. **Enabling Headless UI Testing**: By simply passing a dummy array and a dummy `Dc` to `MainRender.render()`, you can run UI crash tests and performance benchmarks without launching the entire system.
+
+---
+
 ## Usage
 
 ### 1. Basic State Management
@@ -298,6 +385,109 @@ function viewFactory(routeId as Number) as Array? {
 
 // Execute transition
 MonkeyHooks.Router.push(1, WatchUi.SLIDE_LEFT);
+
+```
+
+### 8. Testing and Benchmarking (Test Utilities)
+
+MonkeyHooks provides test utilities designed to maximize the benefits of decoupling "pure rendering" from "state management" on Garmin devices.
+
+It enables headless UI rendering tests (smoke/crash detection) and performance benchmarking behind the scenes without having to launch the simulator screen.
+
+#### Basic Test Setup
+
+Access `MonkeyHooks.TestUtils` within your test code to reset the Store, inject mock state, and generate dummy drawing contexts (`Dc`).
+
+#### 1. Resetting the Store and Mocking State
+
+Clean up globally retained state between test cases to prevent state bleeding and inject dummy data for testing.
+
+```monkeyc
+import Toybox.Test;
+
+(:test)
+function testMyBusinessLogic(logger as Test.Logger) as Boolean {
+    // 1. Reset Store to prevent state bleeding between tests
+    MonkeyHooks.TestUtils.resetStore();
+
+    // 2. Inject required mock state (does not trigger UI updates)
+    MonkeyHooks.TestUtils.injectState({
+        :counter => 10,
+        "username" => "TestUser"
+    });
+
+    // 3. Execute and verify logic
+    var counterHook = MonkeyHooks.useNumber(:counter);
+    counterHook.set(counterHook.req() + 1);
+
+    Test.assertEqualMessage(counterHook.req(), 11, "Counter should be incremented correctly");
+    return true;
+}
+
+```
+
+#### 2. Smoke Testing for Pure Render Modules
+
+By passing dummy arguments (`props`) and a dummy canvas (`Dc`) to pure render modules built with the "Props Packing Pattern", you can safely verify that edge cases do not crash or throw unhandled exceptions.
+
+```monkeyc
+import Toybox.Test;
+import Toybox.Graphics;
+
+(:test)
+function testMainRenderDoesNotCrash(logger as Test.Logger) as Boolean {
+    // 1. Get a dummy canvas (240x240) provided by the library
+    var dc = MonkeyHooks.TestUtils.createDummyDc(240, 240);
+
+    // 2. Create a dummy Props array containing abnormal values or edge cases
+    var badProps = new [MainProps.DATA_SIZE];
+    badProps[MainProps.W] = 240;
+    badProps[MainProps.H] = 240;
+    badProps[MainProps.TITLE_FONT] = null; // Case where font failed to load
+    badProps[MainProps.PROGRESS] = -999.0; // Abnormal animation value
+    // ...
+
+    // 3. Execute rendering and verify it does not crash
+    try {
+        MainRender.render(dc, badProps);
+        logger.debug("Render executed successfully.");
+    } catch(e) {
+        logger.error("Render crashed: " + e.getErrorMessage());
+        return false;
+    }
+
+    return true;
+}
+
+```
+
+#### 3. UI Render Benchmarking
+
+Automatically measure and verify rendering execution time to ensure compliance with Garmin devices' strict CPU budget (e.g., under 10ms per frame).
+
+```monkeyc
+import Toybox.Test;
+
+(:test)
+function benchmarkMainRender(logger as Test.Logger) as Boolean {
+    var dc = MonkeyHooks.TestUtils.createDummyDc(240, 240);
+    var props = [ /* ... valid Props data ... */ ];
+    
+    // Execute the render function repeatedly (e.g., 100 times) and measure execution time (ms)
+    var totalTimeMs = MonkeyHooks.TestUtils.benchmarkRender(
+        logger, 
+        dc, 
+        MainRender.method(:render), 
+        props, 
+        100, // Number of iterations
+        "MainView Render" // Label for logging
+    );
+
+    // Require total time for 100 frames to be under 1000ms (<= 10ms per frame)
+    Test.assertEqualMessage(totalTimeMs < 1000, true, "Does not meet rendering performance requirements");
+
+    return true;
+}
 
 ```
 

@@ -1,0 +1,6 @@
+node_modules/
+.prettierignore
+.prettierrc
+package.json
+.editorconfig
+pnpm-lock.yaml

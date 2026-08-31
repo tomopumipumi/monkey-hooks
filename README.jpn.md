@@ -122,6 +122,90 @@ base.sourcePath = source;lib/monkey-hooks/src
 
 ---
 
+## 推奨アーキテクチャ：Propsパッキング・パターンと純粋描画関数
+
+Garminデバイスで「滑らかな描画パフォーマンス」と「高いテスト容易性」を両立するために、MonkeyHooksでは「Propsパッキング・パターン」を用いたUI設計を推奨しています。
+
+Monkey Cにおいて、クラスのインスタンス変数（例: `_width` や `_progress`）へのアクセスは内部的にハッシュ検索（ディクショナリ検索）が発生します。そのため、秒間何度も呼ばれる `onUpdate` の中でメンバ変数に頻繁にアクセスすると、フレームレート低下の大きな原因となります。
+
+これを防ぐため、Viewが持つすべての状態を1つの「配列」にパックし、状態を持たない「純粋関数」に渡して描画させるアーキテクチャが有効です。
+
+### 実装例
+
+#### **1. Propsのインデックス定義**
+マジックナンバーを避けるため、配列のインデックスを `enum` で定義し、型のコメントを残します。
+
+```monkeyc
+module MainProps {
+    enum {
+        W = 0,        // Number
+        H,            // Number
+        IS_ANIM_ON,   // Boolean
+        PROGRESS,     // Float
+        DATA_SIZE = 4 // 配列の要素数
+    }
+}
+
+```
+
+#### **2. 純粋な描画モジュール**
+描画のみを担当するモジュールを作成します。引数として受け取った配列を冒頭でローカル変数に展開（アンパック）します。**Monkey Cではローカル変数へのアクセスが最速**であるため、これだけで描画負荷が劇的に下がります。
+
+```monkeyc
+module MainRender {
+    function render(dc as Graphics.Dc, props as Array) as Void {
+        // 先頭でローカル変数に展開する
+        var w = props[MainProps.W] as Number;
+        var h = props[MainProps.H] as Number;
+        var isAnimOn = props[MainProps.IS_ANIM_ON] as Boolean;
+        var progress = props[MainProps.PROGRESS] as Float;
+
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
+        dc.clear();
+        
+        // 以降はローカル変数を使って描画処理を行う
+        // ...
+    }
+}
+
+```
+
+#### **3. Viewコンテナ**
+`View` クラスは「状態の監視・更新」と「データのパッキング」のみに専念します。描画に関するインスタンス変数はすべて排除し、`_props` 配列に集約します。
+
+```monkeyc
+class MainView extends WatchUi.View {
+    // すべてのキャッシュデータを1つの配列に集約
+    private var _props as Array = new [MainProps.DATA_SIZE];
+
+    function onLayout(dc as Graphics.Dc) as Void {
+        _props[MainProps.W] = MonkeyHooks.useNumber(:width).req();
+        _props[MainProps.H] = MonkeyHooks.useNumber(:height).req();
+    }
+
+    function onTimerTick() as Void {
+        if (_props[MainProps.IS_ANIM_ON] as Boolean) {
+            _props[MainProps.PROGRESS] = (_props[MainProps.PROGRESS] as Float) + 0.1;
+            WatchUi.requestUpdate();
+        }
+    }
+
+    function onUpdate(dc as Graphics.Dc) as Void {
+        // Viewは状態をレンダー関数に丸投げするだけ（副作用を持たない）
+        MainRender.render(dc, _props);
+    }
+}
+
+```
+
+### このパターンのメリット
+
+1. **パフォーマンス**: `onUpdate` ループ内のメンバ変数アクセス（ハッシュ検索）を排除できます。
+2. **状態と描画の分離**: Reactと同じ思想になり、数十個の変数が乱立しがちなViewのコード見通しが改善します。
+3. **ヘッドレスUIテストの実現**: `MainRender.render()` にダミーの配列とDcを渡すだけで、システム全体を動かさずにUIのクラッシュテストやベンチマークが実行できます。
+
+---
+
 ## 使用方法
 
 ### 1. 基本的な状態管理
@@ -299,6 +383,113 @@ function viewFactory(routeId as Number) as Array? {
 
 // 遷移の実行
 MonkeyHooks.Router.push(1, WatchUi.SLIDE_LEFT);
+
+```
+
+MonkeyHooksのREADMEに追記・統合できる「テストとベンチマーク」のセクション案を作成しました。既存の「7. ルーティング」などの後に続く形（または「🚨 ベストプラクティス」の前など）で追加してください。
+
+---
+
+### 8. テストとベンチマーク (Test Utilities)
+
+MonkeyHooksは、Garminデバイス上で「純粋な描画」と「状態管理」を分離したアーキテクチャを最大限に活かすため、テストユーティリティを提供しています。
+
+シミュレータの画面を立ち上げることなく、裏側でUIの描画テスト（クラッシュ検知）やパフォーマンスのベンチマーク計測が可能です。
+
+#### テストユーティリティの基本設定
+
+テストコード内から `MonkeyHooks.TestUtils` にアクセスすることで、Storeの初期化やモック状態の注入、ダミーキャンバスの生成が行えます。
+
+#### 1. Storeのリセットと状態のモック化
+
+グローバルに保持されている状態をテストごとにクリーンにし、テスト用のダミーデータを注入します。
+
+```monkeyc
+import Toybox.Test;
+
+(:test)
+function testMyBusinessLogic(logger as Test.Logger) as Boolean {
+    // 1. テスト間での状態汚染を防ぐためStoreをリセット
+    MonkeyHooks.TestUtils.resetStore();
+
+    // 2. テストに必要なモック状態を注入（UI更新は発火しません）
+    MonkeyHooks.TestUtils.injectState({
+        :counter => 10,
+        "username" => "TestUser"
+    });
+
+    // 3. ロジックの実行と検証
+    var counterHook = MonkeyHooks.useNumber(:counter);
+    counterHook.set(counterHook.req() + 1);
+
+    Test.assertEqualMessage(counterHook.req(), 11, "カウンターが正しくインクリメントされること");
+    return true;
+}
+
+```
+
+#### 2. 純粋な描画モジュールのクラッシュテスト（Smoke Test）
+
+「Propsパッキング・パターン」で作成された純粋な描画モジュールに対し、ダミーの引数（Props）とダミーのキャンバス（Dc）を渡すことで、エッジケースでのクラッシュ（例外スロー）がないかを安全にテストできます。
+
+```monkeyc
+import Toybox.Test;
+import Toybox.Graphics;
+
+(:test)
+function testMainRenderDoesNotCrash(logger as Test.Logger) as Boolean {
+    // 1. ライブラリが提供するダミーキャンバス(240x240)を取得
+    var dc = MonkeyHooks.TestUtils.createDummyDc(240, 240);
+
+    // 2. 異常値やエッジケースを含んだダミーのProps配列を作成
+    var badProps = new [MainProps.DATA_SIZE];
+    badProps[MainProps.W] = 240;
+    badProps[MainProps.H] = 240;
+    badProps[MainProps.TITLE_FONT] = null; // フォントがロードできていないケース
+    badProps[MainProps.PROGRESS] = -999.0; // 異常なアニメーション値
+    // ...
+
+    // 3. 描画を実行し、例外で落ちないか検証
+    try {
+        MainRender.render(dc, badProps);
+        logger.debug("Render executed successfully.");
+    } catch(e) {
+        logger.error("Render crashed: " + e.getErrorMessage());
+        return false;
+    }
+
+    return true;
+}
+
+```
+
+#### 3. UI描画のベンチマーク計測
+
+Garminデバイスの限られたCPU要件（1フレーム10ms未満など）を満たしているか、描画速度を自動で計測・検証できます。
+
+```monkeyc
+import Toybox.Test;
+
+(:test)
+function benchmarkMainRender(logger as Test.Logger) as Boolean {
+    var dc = MonkeyHooks.TestUtils.createDummyDc(240, 240);
+    var props = [ /* ... 正常なPropsデータ ... */ ];
+    
+    // 指定した回数（例: 100回）描画関数を連続実行し、実行時間（ms）を計測
+    var totalTimeMs = MonkeyHooks.TestUtils.benchmarkRender(
+        logger, 
+        dc, 
+        MainRender.method(:render), 
+        props, 
+        100, // 実行回数
+        "MainView Render" // ログ用の名前
+    );
+
+    // 100フレームで1000ms（= 1フレームあたり10ms）以下であることを要件とする
+    Test.assertEqualMessage(totalTimeMs < 1000, true, "描画パフォーマンス要件を満たしていません");
+
+    return true;
+}
 
 ```
 
