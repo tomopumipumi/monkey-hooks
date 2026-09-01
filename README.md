@@ -1,26 +1,29 @@
 # MonkeyHooks
 
-MonkeyHooks is a library providing state management and utilities for Garmin Connect IQ (Monkey C) application development.
+MonkeyHooks is a state management and utility library for Garmin Connect IQ (Monkey C) application development.
 
-It is designed to improve maintainability by organizing UI state management, the sharing of system resources (such as timers and GPS), and screen transitions.
+It is designed to improve maintainability by organizing processes such as UI state management, system resource sharing (timers and GPS), and screen transitions.
 
-## Showcase: YAMAKAGE
+## Use Case: YAMAKAGE
 
-YAMAKAGE serves as a practical example of what can be built with MonkeyHooks.
+The Garmin application "YAMAKAGE" is a practical example of MonkeyHooks in action.
 
-[YAMAKAGE(Repository)](https://github.com/tomopumipumi/yamakage)
+[YAMAKAGE(Repository)](https://github.com/tomopumipumi/yamakage)<br>
 [YAMAKAGE(Connect IQ)](https://apps.garmin.com/apps/48e48601-9506-4f67-b19c-59ca702c34b8?tid=2)
 
 
-<img width="428" height="598" alt="Image" src="https://github.com/user-attachments/assets/943b440a-47b6-43df-93b9-b234c8f552a5" />
+![HQaPT2Ka4AAXXRo.jpg](https://github.com/user-attachments/assets/8cda2c1b-71e9-45c9-a873-01fe399476ad)
 
-<img width="424" height="596" alt="Image" src="https://github.com/user-attachments/assets/1c735d86-54f9-492c-a708-14807308479b" />
+![HQaPT2ebIAEco02.jpg](https://github.com/user-attachments/assets/c363b3c0-c0e2-4ab2-af67-b42399e87cba)
 
-<img width="590" height="953" alt="Image" src="https://github.com/user-attachments/assets/3e805b72-a31f-4226-9086-5aae01d45a5b" />
+![HQaPT2Wa0AAZi5R.jpg](https://github.com/user-attachments/assets/3b663b69-eb33-4a11-a9c9-3e8a8cf78543)
 
-Implementing complex UIs—such as sun/moon trajectory calculations, panorama views, and animations—under Garmin's strict CPU and memory constraints typically makes it challenging to balance performance with code maintainability.
+![HQaPT2KaEAEJMK0.jpg](https://github.com/user-attachments/assets/36c16aa4-fcb5-4ce4-abcc-b3acbbe83209)
 
-By utilizing MonkeyHooks' state management and caching mechanisms, YAMAKAGE demonstrates how to keep complex data flows organized and maintainable, while still achieving practical performance (smooth rendering and low battery consumption) on actual devices.
+
+Under the strict CPU and memory constraints of Garmin devices, implementing complex UIs—such as sun and moon orbit calculations, panoramic views, and animations—usually presents a major challenge in balancing "performance preservation" and "code maintainability."
+
+By utilizing the state management and caching mechanisms of MonkeyHooks, YAMAKAGE organizes complex state transitions and data flows to enhance maintainability, while achieving practical performance, such as smooth rendering and low power consumption.
 
 ---
 
@@ -29,13 +32,13 @@ By utilizing MonkeyHooks' state management and caching mechanisms, YAMAKAGE demo
 MonkeyHooks is designed based on the following paradigms:
 
 1. **Centralized State Management:**
-It features a single `Store` shared across the entire application. States are managed by keys and can be accessed and updated from any component.
-2. **Automatic Rendering Updates:**
-When a state is updated via `set()`, the change is detected, automatically calling `WatchUi.requestUpdate()` and re-evaluating dependent listeners or computed properties.
+It has a single `Store` shared across the entire app. States are managed by keys and can be accessed and updated from any component.
+2. **Automatic Render Updates:**
+When a state is updated via `set()`, it detects the change, automatically calls `WatchUi.requestUpdate()`, and re-evaluates dependent listeners and computed properties.
 3. **Type Safety and Null Checking:**
-To accommodate the characteristics of Monkey C, it provides type-specific contexts such as `useNumber` and `useString`. By using the `req()` method, you can safely access values assuming they exist (an exception is thrown if the value is null).
-4. **Opt-In Design and Resource Sharing:**
-It adopts a modular structure (opt-in design), allowing you to include only the necessary features in your project. Additionally, components like `SharedTimer` and `LocationHook` share a single system resource even if referenced by multiple components, using internal weak references (`WeakReference`) to prevent memory leaks.
+To address Monkey C's characteristics, it provides type-specific contexts such as `useNumber` and `useString`. By using the `req()` method, you can safely access values under the assumption that they exist (throws an exception if null).
+4. **Opt-in Design and Resource Sharing:**
+It adopts a modular structure (opt-in design) allowing you to include only necessary features in your project. Additionally, `SharedTimer` and `LocationHook` share a single system resource even when referenced by multiple components, preventing memory leaks through internal weak references (WeakReference).
 
 ---
 
@@ -71,7 +74,7 @@ graph TD
         Dumb[Components]:::comp
     end
 
-    Sensors -->|Share single resource| SystemH
+    Sensors -->|Single resource sharing| SystemH
     Storage <-->|Auto save/restore| Hooks
     
     SystemH -->|Callback| View
@@ -90,15 +93,16 @@ graph TD
     Store -.->|Detect Route_ID| Router
     Router -.->|push / switchTo| Screen
 
+
 ```
 
 ---
 
 ## Installation
 
-It is recommended to introduce MonkeyHooks as a Git submodule.
+We recommend installing MonkeyHooks as a Git submodule.
 
-### 1. Adding the Submodule
+### 1. Add Submodule
 
 Run the following command in the root directory of your project to add the library:
 
@@ -107,33 +111,33 @@ git submodule add https://github.com/tomopumipumi/monkey-hooks.git lib/monkey-ho
 
 ```
 
-### 2. Configuring `monkey.jungle`
+### 2. Configure `monkey.jungle`
 
-Edit the `monkey.jungle` file at the root of your application and add the MonkeyHooks `src` folder to the source path for compilation.
+Edit `monkey.jungle` at the root of your application and add the `src` folder of MonkeyHooks to the source path for compilation.
 
 ```jungle
 project.manifest = manifest.xml
 
-# Add the submodule's src folder in addition to the existing source path
+# Specify the submodule's src folder in addition to the existing source
 base.sourcePath = source;lib/monkey-hooks/src
 
 ```
 
 ---
 
-## Recommended Architecture: Props Packing Pattern and Pure Render Functions
+## Recommended Architecture: Props Packing Pattern & Pure Render Functions
 
-To achieve both "smooth rendering performance" and "high testability" on Garmin devices, MonkeyHooks strongly recommends a UI design utilizing the "Props Packing Pattern."
+To achieve both "smooth rendering performance" and "high testability" on Garmin devices, MonkeyHooks recommends a UI design using the "Props Packing Pattern."
 
-In Monkey C, accessing class instance variables (e.g., `_width` or `_progress`) internally triggers a hash lookup (dictionary lookup). Therefore, frequently accessing member variables inside `onUpdate`—which is called multiple times per second—is a major cause of frame rate drops.
+This involves packing all the states a View holds into a single "Array" and passing it to a stateless "pure function" for rendering, aiming to separate responsibilities and enhance testability.
 
-To prevent this, an effective architecture is to pack all the states held by the View into a single "array" and pass it to a stateless "pure function" for rendering.
+Regarding performance, testing with the WatchApp version of `YAMAKAGE` confirmed an execution time drop of about 1ms. However, considering the testability benefits, this is within a negligible range and the advantages outweigh the costs in moderately sized apps.
 
 ### Implementation Example
 
-#### **1. Defining Props Indices**
+#### **1. Props Index Definition**
 
-To avoid magic numbers, define the array indices using an `enum` and leave comments indicating their types.
+To avoid magic numbers, define the array indices using an `enum` and leave type comments.
 
 ```monkeyc
 module MainProps {
@@ -142,7 +146,7 @@ module MainProps {
         H,            // Number
         IS_ANIM_ON,   // Boolean
         PROGRESS,     // Float
-        DATA_SIZE = 4 // Number of elements in the array
+        DATA_SIZE = 4 // Number of array elements
     }
 }
 
@@ -150,7 +154,7 @@ module MainProps {
 
 #### **2. Pure Render Module**
 
-Create a module that is solely responsible for rendering. At the beginning of the function, unpack the received array into local variables. **In Monkey C, accessing local variables is the fastest operation**, so this step alone drastically reduces the rendering overhead.
+Create a module solely responsible for rendering. Unpack the received array into local variables at the beginning.
 
 ```monkeyc
 module MainRender {
@@ -164,7 +168,7 @@ module MainRender {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
         
-        // From here on, use the local variables for rendering
+        // From here, use local variables for rendering processes
         // ...
     }
 }
@@ -173,11 +177,11 @@ module MainRender {
 
 #### **3. View Container**
 
-The `View` class should focus exclusively on "monitoring/updating states" and "packing data." Eliminate all instance variables related to rendering and consolidate them into the `_props` array.
+The `View` class focuses solely on "monitoring/updating states" and "data packing." All instance variables related to rendering are eliminated and consolidated into the `_props` array.
 
 ```monkeyc
 class MainView extends WatchUi.View {
-    // Consolidate all cached data into a single array
+    // Consolidate all cache data into a single array
     private var _props as Array = new [MainProps.DATA_SIZE];
 
     function onLayout(dc as Graphics.Dc) as Void {
@@ -193,18 +197,17 @@ class MainView extends WatchUi.View {
     }
 
     function onUpdate(dc as Graphics.Dc) as Void {
-        // The View simply delegates the state to the render function (no side effects)
+        // The View merely delegates the state to the render function (no side effects)
         MainRender.render(dc, _props);
     }
 }
 
 ```
 
-#### Benefits of this Pattern
+### Benefits of this Pattern
 
-1. **Performance**: Completely eliminates member variable access (hash lookups) inside the `onUpdate` loop.
-2. **Separation of State and Rendering**: Aligns with React's design philosophy (Container / Presentational components), greatly improving the readability of View code that otherwise tends to be cluttered with dozens of variables.
-3. **Enabling Headless UI Testing**: By simply passing a dummy array and a dummy `Dc` to `MainRender.render()`, you can run UI crash tests and performance benchmarks without launching the entire system.
+* **Separation of State and Rendering:** It shares the same philosophy as React, improving the visibility of View code that is often cluttered with dozens of variables.
+* **Enabling Headless UI Testing:** By simply passing a dummy array and Dc to `MainRender.render()`, you can run UI crash tests and benchmarks without running the entire system.
 
 ---
 
@@ -219,7 +222,7 @@ class MyDelegate extends WatchUi.BehaviorDelegate {
     private var _counter = MonkeyHooks.useNumber(:counter);
 
     function onSelect() {
-        // Update the state (automatically triggers WatchUi.requestUpdate())
+        // Update the state (WatchUi.requestUpdate() is automatically triggered)
         _counter.set(_counter.req() + 1);
         return true;
     }
@@ -227,17 +230,17 @@ class MyDelegate extends WatchUi.BehaviorDelegate {
 
 ```
 
-### 2. Subscribing and Rendering State in UI (Push-Based Caching)
+### 2. Subscribing to and Rendering State in UI (Push-based Caching)
 
-**Important:** Due to CPU constraints on Garmin devices, calling `MonkeyHooks.use...` inside `onUpdate` (which runs every frame) causes frame drops (lag) due to dictionary lookup overhead.
-**Adopt a "push-based architecture" where states are cached in class variables during `onShow`, and monitored for changes using `watch`.**
+Due to the CPU constraints of Garmin devices, calling `MonkeyHooks.use...` inside `onUpdate` (which is executed every frame) introduces dictionary lookup overhead.
+We recommend a "push-based architecture" where you cache states into class variables within `onShow` and monitor changes using `watch`.
 
 ```monkeyc
 import Toybox.WatchUi;
 import Toybox.Graphics;
 
 class MyView extends WatchUi.View {
-    // Cache variable for rendering (fastest access)
+    // Cache variable for rendering
     private var _currentCount as Number = 0;
 
     function initialize() {
@@ -246,19 +249,19 @@ class MyView extends WatchUi.View {
     }
 
     function onShow() {
-        // 1. Fetch the latest value from the Store on initial display and cache it
+        // 1. Fetch and cache the latest value from the Store upon initial display
         _currentCount = MonkeyHooks.useNumber(:counter).req();
 
-        // 2. Register a listener that fires only when the state changes (push notification)
+        // 2. Register a listener that fires only when the state changes (Push notification)
         MonkeyHooks.watch(self, :onCounterChanged, [:counter]);
     }
 
     function onHide() {
-        // Unregister to prevent memory leaks
+        // Unregister monitoring to prevent memory leaks
         MonkeyHooks.unwatch(self, :onCounterChanged);
     }
 
-    // Called only when the value changes, updating the cache
+    // Called only when the value changes, keeping the cache up-to-date
     function onCounterChanged(vals as Array) as Void {
         if (vals[0] != null) {
             _currentCount = vals[0] as Number;
@@ -269,7 +272,7 @@ class MyView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
         
-        // Do not call MonkeyHooks inside onUpdate; use only the cached variable
+        // Do not call MonkeyHooks inside onUpdate; use only cache variables
         dc.drawText(100, 100, Graphics.FONT_LARGE, "Count: " + _currentCount, Graphics.TEXT_JUSTIFY_CENTER);
     }
 }
@@ -278,15 +281,13 @@ class MyView extends WatchUi.View {
 
 ### 3. Computed Properties (useComputed) ⚠️ Deprecated
 
-Creates derived state that depends on other states. Recalculation occurs only when the dependent states change.
+Creates derived states computed based on other states. Recalculation occurs only when the dependent states change.
 
-**🚨 Important Performance Warning:**
-Under the strict CPU constraints of Garmin devices, it has been proven that the internal "dependency array (deps) change detection loop" performed by `useComputed` introduces non-negligible overhead. Overusing this feature, especially near the render loop (`onUpdate`), is a major cause of frame drops and performance degradation.
+*Note:*
+Under the severe CPU constraints of Garmin devices, the "dependency array (deps) change detection loop" performed internally by `useComputed` incurs noticeable overhead. Heavy use, especially near the rendering loop (`onUpdate`), can impact performance.
 
 **✅ Recommended Alternative (Push-based + Manual Caching):**
-For maximum performance, we strongly recommend using `watch` to detect changes in dependent states and manually recalculating and caching the results into class variables within your components. In Monkey C, a simple variable value comparison (dirty checking) acts as the fastest possible "Computed" implementation.
-
-*(Note: This feature is currently deprecated. In line with this framework's design philosophy of pursuing extreme performance, it is scheduled to be removed in a future major version update. Please refrain from using it in new projects and treat it strictly as an optional legacy feature.)*
+Instead of this feature, we recommend using `watch` to detect changes in dependent states and manually performing recalculations and caching in class variables within the component.
 
 ```monkeyc
 class BmiCalculator {
@@ -316,19 +317,19 @@ class UserProfile {
 
 ```
 
-### 4. Collection Operations and Forced Updates (forceSet)
+### 4. Collection Type Operations and Forced Updates (forceSet)
 
-Due to Monkey C specifications, arrays and dictionaries are evaluated using reference comparison (`!=`). Modifying the contents of an existing array and calling `set()` will not be detected as a change.
-If you manipulate elements directly, use `forceSet()` to bypass the reference comparison and forcibly trigger an update notification and redraw.
+By Monkey C specification, arrays and dictionaries are compared by reference (`!=`). Modifying the contents of an existing array and calling `set()` will not be detected as a change.
+When directly manipulating elements, use `forceSet()` to bypass reference comparison and forcefully trigger an update.
 
 ```monkeyc
 var arrHook = MonkeyHooks.useArray(:myList);
 var list = arrHook.req();
 
-list.add("New Item"); // Modifies the array contents (the reference remains the same)
+list.add("New Item"); // Modifies the array contents (reference remains the same)
 
 // arrHook.set(list); // Ignored because the reference is identical
-arrHook.forceSet(list); // Forcibly triggers an update notification and redraw
+arrHook.forceSet(list); // Forcefully triggers an update notification and re-render
 
 ```
 
@@ -338,15 +339,15 @@ Integrates with `Application.Storage` to create states that persist even after t
 
 ```monkeyc
 var userName = MonkeyHooks.useStorageString("username").init("Guest");
-userName.set("Bob"); // Store update and Storage.setValue() are executed simultaneously
+userName.set("Bob"); // Updates the Store and executes Storage.setValue() simultaneously
 
 ```
 
-*(※ Do not read/write storage hooks inside `onUpdate` or high-frequency timers. This will shorten flash memory lifespan and cause fatal performance degradation.)*
+*(Note: Do not read/write storage hooks inside `onUpdate` or high-frequency timers. This will shorten flash memory lifespan and critically degrade performance.)*
 
 ### 6. Resource Sharing (SharedTimer / LocationHook)
 
-Safely share system resources. The resource activates when the first listener is registered and automatically stops when the number of listeners drops to zero.
+Safely share system resources. Resources start when the first listener is registered and automatically stop when listeners drop to zero.
 
 ```monkeyc
 class MainView extends WatchUi.View {
@@ -355,8 +356,8 @@ class MainView extends WatchUi.View {
         MonkeyHooks.LocationHook.subscribe(self, :onLocationUpdated);
     }
 
-    function onTick() as Void { /* Processing at regular intervals */ }
-    function onLocationUpdated(info as Position.Info) as Void { /* GPS processing */ }
+    function onTick() as Void { /* Processes at regular intervals */ }
+    function onLocationUpdated(info as Position.Info) as Void { /* GPS processes */ }
 
     function onHide() {
         MonkeyHooks.SharedTimer.unsubscribe(self, :onTick);
@@ -368,7 +369,7 @@ class MainView extends WatchUi.View {
 
 ### 7. Routing (MonkeyRouter)
 
-Manages the instantiation of Views and Delegates to handle screen transitions.
+Manages the creation of Views and Delegates to handle screen transitions.
 
 ```monkeyc
 function onStart(state) {
@@ -390,27 +391,27 @@ MonkeyHooks.Router.push(1, WatchUi.SLIDE_LEFT);
 
 ### 8. Testing and Benchmarking (Test Utilities)
 
-MonkeyHooks provides test utilities designed to maximize the benefits of decoupling "pure rendering" from "state management" on Garmin devices.
+To fully leverage the architecture that separates "pure rendering" from "state management" on Garmin devices, MonkeyHooks provides test utilities.
 
-It enables headless UI rendering tests (smoke/crash detection) and performance benchmarking behind the scenes without having to launch the simulator screen.
+You can run UI rendering tests (crash detection) and benchmark performance in the background without launching the simulator screen.
 
-#### Basic Test Setup
+#### Basic Setup for Test Utilities
 
-Access `MonkeyHooks.TestUtils` within your test code to reset the Store, inject mock state, and generate dummy drawing contexts (`Dc`).
+By accessing `MonkeyHooks.TestUtils` from within test code, you can reset the Store, inject mock states, and generate dummy canvases.
 
-#### 1. Resetting the Store and Mocking State
+#### 1. Resetting Store and Mocking States
 
-Clean up globally retained state between test cases to prevent state bleeding and inject dummy data for testing.
+Cleans the globally held states per test and injects dummy data required for testing.
 
 ```monkeyc
 import Toybox.Test;
 
 (:test)
 function testMyBusinessLogic(logger as Test.Logger) as Boolean {
-    // 1. Reset Store to prevent state bleeding between tests
+    // 1. Reset the Store to prevent state pollution across tests
     MonkeyHooks.TestUtils.resetStore();
 
-    // 2. Inject required mock state (does not trigger UI updates)
+    // 2. Inject mock states required for testing (UI updates are not fired)
     MonkeyHooks.TestUtils.injectState({
         :counter => 10,
         "username" => "TestUser"
@@ -420,15 +421,15 @@ function testMyBusinessLogic(logger as Test.Logger) as Boolean {
     var counterHook = MonkeyHooks.useNumber(:counter);
     counterHook.set(counterHook.req() + 1);
 
-    Test.assertEqualMessage(counterHook.req(), 11, "Counter should be incremented correctly");
+    Test.assertEqualMessage(counterHook.req(), 11, "Counter should increment correctly");
     return true;
 }
 
 ```
 
-#### 2. Smoke Testing for Pure Render Modules
+#### 2. Crash Testing Pure Render Modules (Smoke Test)
 
-By passing dummy arguments (`props`) and a dummy canvas (`Dc`) to pure render modules built with the "Props Packing Pattern", you can safely verify that edge cases do not crash or throw unhandled exceptions.
+By passing a dummy array of arguments (Props) and a dummy canvas (Dc) to a pure render module created with the "Props Packing Pattern," you can safely test for crashes (thrown exceptions) in edge cases.
 
 ```monkeyc
 import Toybox.Test;
@@ -443,11 +444,11 @@ function testMainRenderDoesNotCrash(logger as Test.Logger) as Boolean {
     var badProps = new [MainProps.DATA_SIZE];
     badProps[MainProps.W] = 240;
     badProps[MainProps.H] = 240;
-    badProps[MainProps.TITLE_FONT] = null; // Case where font failed to load
+    badProps[MainProps.TITLE_FONT] = null; // Case where font fails to load
     badProps[MainProps.PROGRESS] = -999.0; // Abnormal animation value
     // ...
 
-    // 3. Execute rendering and verify it does not crash
+    // 3. Execute rendering and verify it doesn't crash with an exception
     try {
         MainRender.render(dc, badProps);
         logger.debug("Render executed successfully.");
@@ -461,9 +462,9 @@ function testMainRenderDoesNotCrash(logger as Test.Logger) as Boolean {
 
 ```
 
-#### 3. UI Render Benchmarking
+#### 3. Benchmarking UI Rendering
 
-Automatically measure and verify rendering execution time to ensure compliance with Garmin devices' strict CPU budget (e.g., under 10ms per frame).
+Automatically measure and verify rendering speeds to check if they meet the strict CPU requirements of Garmin devices (e.g., less than 10ms per frame).
 
 ```monkeyc
 import Toybox.Test;
@@ -471,19 +472,19 @@ import Toybox.Test;
 (:test)
 function benchmarkMainRender(logger as Test.Logger) as Boolean {
     var dc = MonkeyHooks.TestUtils.createDummyDc(240, 240);
-    var props = [ /* ... valid Props data ... */ ];
+    var props = [ /* ... Normal Props data ... */ ];
     
-    // Execute the render function repeatedly (e.g., 100 times) and measure execution time (ms)
+    // Execute the render function continuously for a specified number of times (e.g., 100) and measure execution time (ms)
     var totalTimeMs = MonkeyHooks.TestUtils.benchmarkRender(
         logger, 
         dc, 
         MainRender.method(:render), 
         props, 
-        100, // Number of iterations
-        "MainView Render" // Label for logging
+        100, // Number of executions
+        "MainView Render" // Name for the log
     );
 
-    // Require total time for 100 frames to be under 1000ms (<= 10ms per frame)
+    // Require the execution time for 100 frames to be under 1000ms (= under 10ms per frame)
     Test.assertEqualMessage(totalTimeMs < 1000, true, "Does not meet rendering performance requirements");
 
     return true;
@@ -492,33 +493,6 @@ function benchmarkMainRender(logger as Test.Logger) as Boolean {
 ```
 
 ---
-
-## 🚨 Best Practices: Maximizing Performance
-
-To maintain smooth animations and rendering on Garmin devices, strictly adhere to the following rules.
-
-### 1. Eliminate MonkeyHooks from inside `onUpdate`
-
-`WatchUi.View.onUpdate()` is an intensive loop called dozens of times per second. Calling `useNumber` or `Store.get` inside this loop causes rendering to lag due to hash lookup overhead.
-Always **cache values in class variables during `onLayout` or `onShow**`, and strictly limit `onUpdate` to reading those local variables.
-
-### 2. Do not use Hooks for disposable rendering buffers
-
-Using `MH.usePolygonBuffer` (or similar) to manage temporary array buffers used only momentarily during rendering (like polygon coordinate calculations) incurs lookup costs.
-For temporary calculation buffers contained entirely within a single component, reusing a **private static variable of a module** is the fastest approach.
-
-### 3. "Array Packing" for Child Components
-
-When splitting UI components into separate files, calling Hooks within child components degrades performance. The fastest method in Monkey C is to collect static data retrieved in the parent (View)—such as screen dimensions and fonts—into a single array ("array packing") and pass it down as arguments (prop drilling).
-
-```monkeyc
-// Create the cache in the parent View's onLayout
-_layoutCtx = [displayWidth, titleFont, valueFont];
-
-// Pass it all at once to the child component inside onUpdate
-MyComponent.render(dc, _layoutCtx);
-
-```
 
 ## License
 
